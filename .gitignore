@@ -4,3 +4,7 @@
 *.csv
 
 .idea/
+
+*.jpg
+
+*.db
