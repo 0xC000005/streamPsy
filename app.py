@@ -34,26 +34,34 @@ def cached_fetch_data():
     return fetch_data()
 
 
-# Initialize a Streamlit app that will display the LEFT and RIGHT at row 1 in real time and update these numbers by
-# the user input.
+# Initialize a Streamlit app that will display the LEFT and RIGHT at row 1 in real time and update these numbers by the user input.
 st.title("Streamlit App")
-st.write(
-    "This app will display the LEFT and RIGHT columns of the first row in real time and update these numbers by the user input."
-)
+st.write("This app will display the LEFT and RIGHT columns of the first row in real time and update these numbers by the user input.")
 
-data = cached_fetch_data()
-left = data[0][0]
-right = data[0][1]
-st.write(f"LEFT: {left}")
-st.write(f"RIGHT: {right}")
+# Initialize session state for the left and right values
+if "left" not in st.session_state or "right" not in st.session_state:
+    data = cached_fetch_data()
+    st.session_state.left = data[0][0]
+    st.session_state.right = data[0][1]
+
+# Create placeholders for the values
+left_placeholder = st.empty()
+right_placeholder = st.empty()
+
+# Display the initial values
+left_placeholder.write(f"LEFT: {st.session_state.left}")
+right_placeholder.write(f"RIGHT: {st.session_state.right}")
 
 # Get the user input of the left number with a submit button
-left_input = st.number_input("Enter the LEFT number", value=left)
+left_input = st.number_input("Enter the LEFT number", value=st.session_state.left)
 if st.button("Submit"):
     write_data(1, left=left_input)
-    st.rerun()
+    st.session_state.left = left_input
+    # Update the placeholders with the new values
+    left_placeholder.write(f"LEFT: {st.session_state.left}")
+    st.write("Data updated successfully")
 
-# display the Duolingo like image selection task
+# display the Duolingo-like image selection task
 with st.container():
     st.write("Select the image that best describes the word")
     # word: cat, in large size. make it centered
