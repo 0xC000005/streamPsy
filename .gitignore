@@ -10,3 +10,7 @@
 *.db
 
 .streamlit/
+
+google_sheet/social-ai-human-experiments-91522a487baf.json
+
+google_sheet/secrets.toml
