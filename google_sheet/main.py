@@ -28,7 +28,7 @@ def init_connection():
 
 conn = init_connection()
 
-# initial the session data `PageID`
+# initial the session UserData `PageID`
 if "PageID" not in st.session_state:
     st.session_state.page_id = 1
 
