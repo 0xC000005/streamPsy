@@ -44,7 +44,7 @@ def get_UserIDToPageID(UserID: int, conn: Database[Mapping[str, Any] | Any] = CO
 
 
 def update_users_pageID(
-        PageID: int, UserID: int, conn: Database[Mapping[str, Any] | Any] = CONN
+    PageID: int, UserID: int, conn: Database[Mapping[str, Any] | Any] = CONN
 ):
     # update the PageID of the UserID
     collection = conn["UserIDToPageID"]
@@ -64,7 +64,7 @@ def update_users_pageID(
 
 
 def get_counts_from_ProblemID(
-        ProblemID: int, conn: Database[Mapping[str, Any] | Any] = CONN
+    ProblemID: int, conn: Database[Mapping[str, Any] | Any] = CONN
 ):
     collection = conn["Problem"]
     document = collection.find_one({"ProblemID": ProblemID})
@@ -76,7 +76,7 @@ def get_counts_from_ProblemID(
 
 
 def increase_count_of_problemID(
-        ProblemID: int, conn: Database[Mapping[str, Any] | Any] = CONN
+    ProblemID: int, conn: Database[Mapping[str, Any] | Any] = CONN
 ):
     collection = conn["Problem"]
     document = collection.find_one({"ProblemID": ProblemID})
@@ -87,33 +87,33 @@ def increase_count_of_problemID(
         collection.update_one({"ProblemID": ProblemID}, {"$inc": {"count": 1}})
 
 
-def get_total_num_of_user(conn: Database[Mapping[str, Any] | Any] = CONN):
-    collection = conn["UserIDToPageID"]
-    return collection.count_documents({})
-
-
 def get_user_specific_data(UserID: int, conn: Database[Mapping[str, Any] | Any] = CONN):
     # this function is for storing not frequently accessed user-specific data,
     # the reason why users PageID is not stored here is that the PageID is frequently read and written
     # and the eval function is not efficient for frequently accessed data
     collection = conn["UserData"]
     document = collection.find_one({"UserID": UserID})
-    # get the UserData field
-    UserData = document["UserData"]
-    # turn the UserData from string to dictionary
-    return json.loads(UserData)
+    # if the UserData does not exist, return an empty dictionary
+    if document is None:
+        return {}
+    else:
+        return json.loads(document["UserData"])
 
 
-def update_user_specific_data(UserID: int, UserData: dict, conn: Database[Mapping[str, Any] | Any] = CONN):
+
+def update_user_specific_data(
+    UserID: int, UserData: dict, conn: Database[Mapping[str, Any] | Any] = CONN
+):
     collection = conn["UserData"]
     # if the document does not exist, insert a new document, else update the document
-    collection.update_one({"UserID": UserID}, {"$set": {"UserData": json.dumps(UserData)}}, upsert=True)
+    collection.update_one(
+        {"UserID": UserID}, {"$set": {"UserData": json.dumps(UserData)}}, upsert=True
+    )
 
 
-def wait_until_all_users_reached_page(PageID_to_reach: int):
-    total_num_of_user = get_total_num_of_user()
+def wait_until_all_users_reached_page(PageID_to_reach: int, total_num_of_user: int):
     with st.spinner(
-            "Wait for it other users to reach page " + str(PageID_to_reach) + "..."
+        "Wait for it other users to reach page " + str(PageID_to_reach) + "..."
     ):
         placeholder = st.empty()
 
@@ -121,7 +121,7 @@ def wait_until_all_users_reached_page(PageID_to_reach: int):
             num_of_user_have_reached_page_x = 0
             # check if userID 1, 2, 3, 4 are at least in page 3
             for i in range(1, total_num_of_user + 1):
-                if get_UserIDToPageID(i, conn=CONN) >= PageID_to_reach:
+                if get_UserIDToPageID(i, conn=CONN) is not None and get_UserIDToPageID(i, conn=CONN) >= PageID_to_reach:
                     num_of_user_have_reached_page_x += 1
             if num_of_user_have_reached_page_x >= 4:
                 break
@@ -195,6 +195,7 @@ if st.session_state.PageID == 2:
 
     if st.button("Go to PageID 3"):
         update_users_pageID(PageID=3, UserID=st.session_state.UserID, conn=CONN)
+
         st.rerun()
 
 # ============= Page 3 =============
@@ -204,7 +205,7 @@ if st.session_state.PageID == 3:
     st.write("You have selected player number: ", st.session_state.UserID)
     st.write("You have to wait at this page until all players are in page 3")
 
-    wait_until_all_users_reached_page(PageID_to_reach=3)
+    wait_until_all_users_reached_page(PageID_to_reach=3, total_num_of_user=4)
 
     update_users_pageID(PageID=4, UserID=st.session_state.UserID, conn=CONN)
 
@@ -307,11 +308,27 @@ if st.session_state.PageID == 5:
     # for a page that has a button as well as waiting mechanism, we need to make sure the button press state is
     # remembered even if the user refreshes the page
 
-    if st.button("Submit & Next"):
-        # Set a cookie
+    # get the user specific data
+    UserData = get_user_specific_data(UserID=st.session_state.UserID, conn=CONN)
+    # see if the 'pressed' key is in the UserData, if not, set it to False
+    if "pressed" not in UserData:
+        UserData["pressed"] = False
 
+    if st.button("Submit & Next", disabled=not UserData["pressed"]):
+        # If the key is already pressed, disable the button
+        # else, if the button is pressed, set the key to True
+
+        UserData["pressed"] = True
+        update_user_specific_data(UserID=st.session_state.UserID, UserData=UserData, conn=CONN)
+
+        wait_until_all_users_reached_page(PageID_to_reach=5, total_num_of_user=4)
         update_users_pageID(PageID=6, UserID=st.session_state.UserID, conn=CONN)
-        wait_until_all_users_reached_page(PageID_to_reach=5)
+        st.rerun()
+
+    if UserData["pressed"]:
+        st.write("You have already pressed the button")
+        wait_until_all_users_reached_page(PageID_to_reach=5, total_num_of_user=4)
+        update_users_pageID(PageID=6, UserID=st.session_state.UserID, conn=CONN)
         st.rerun()
 
 # ============= Page 6 =============
