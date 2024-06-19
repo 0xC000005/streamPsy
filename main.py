@@ -7,11 +7,11 @@ import pymongo
 from pymongo.database import Database
 
 st.set_page_config(
-    page_title="StreamPsy Human Experiments Demo",
+    page_title="StreamPsy Demo",
     page_icon="😎",
     menu_items={
-        "Get Help": "https://www.extremelycoolapp.com/help",
-        "Report a bug": "https://www.extremelycoolapp.com/bug",
+        "Get Help": "mailto:maxjingweri.zhang@mail.utoronto.com",
+        "Report a bug": "mailto:maxjingweri.zhang@mail.utoronto.com",
         "About": "# This is a header. This is an *extremely* cool app!",
     },
 )
@@ -76,8 +76,10 @@ def get_counts_from_ProblemID(
 
 
 def increase_count_of_problemID(
-    ProblemID: int, conn: Database[Mapping[str, Any] | Any] = CONN
+    ProblemID, conn: Database[Mapping[str, Any] | Any] = CONN
 ):
+    st.write("ProblemID", ProblemID)
+    time.sleep(10)
     collection = conn["Problem"]
     document = collection.find_one({"ProblemID": ProblemID})
     if document is None:
@@ -100,7 +102,6 @@ def get_user_specific_data(UserID: int, conn: Database[Mapping[str, Any] | Any] 
         return json.loads(document["UserData"])
 
 
-
 def update_user_specific_data(
     UserID: int, UserData: dict, conn: Database[Mapping[str, Any] | Any] = CONN
 ):
@@ -121,7 +122,10 @@ def wait_until_all_users_reached_page(PageID_to_reach: int, total_num_of_user: i
             num_of_user_have_reached_page_x = 0
             # check if userID 1, 2, 3, 4 are at least in page 3
             for i in range(1, total_num_of_user + 1):
-                if get_UserIDToPageID(i, conn=CONN) is not None and get_UserIDToPageID(i, conn=CONN) >= PageID_to_reach:
+                if (
+                    get_UserIDToPageID(i, conn=CONN) is not None
+                    and get_UserIDToPageID(i, conn=CONN) >= PageID_to_reach
+                ):
                     num_of_user_have_reached_page_x += 1
             if num_of_user_have_reached_page_x >= 4:
                 break
@@ -138,8 +142,6 @@ def wait_until_all_users_reached_page(PageID_to_reach: int, total_num_of_user: i
 
 # ============== Streamlit App ==============
 
-
-# initial the session UserData `PageID`
 if "PageID" not in st.session_state:
     st.session_state.PageID = 1
 
@@ -151,23 +153,32 @@ if st.session_state.PageID == 1:
     # display the markdown instructions
     st.markdown(
         """
-        You can write your instructions in markdown. The app will render it for you.
+        ## Introduction
         
-        You can even put media here: 
+        StreamPsy is a all-in-one platform for conducting human experiments written completely in Python. 
+        
+        It offers greater customizability over the functionality and the workflow comparing to platforms with pre-defined functions and workflows like PsychoPy, while reducing the need to develop the frontend and the backend from scratch.
+        
+        ## Demo
+        
+        This demo will demonstrate the basic functionalities of StreamPsy, including:
+        - User login and page navigation. 
+            - Remembering the page where the user left even after the user closes the tab.
+        - Controlled workflow based on multi-user interactions. 
+            - Ex. wait until all users reach a certain page to proceed.
+        - Collect survey data and store them in a MongoDB database.
+        
+        To find the tutorial on how to use StreamPsy, check the following vide:
         """
     )
 
     # display a youtube video
     st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 
-    st.markdown(
-        """
-    ------
-    """
-    )
+    st.divider()
 
     # choose the player number using a click-on then submitting button
-    UserID = st.selectbox("What is your UserID?", ("1", "2", "3", "4"))
+    UserID = st.selectbox("What is your User ID?", ("1", "2", "3", "4"))
     UserID = int(UserID)
 
     st.write("You selected:", UserID)
@@ -190,10 +201,10 @@ if st.session_state.PageID == 1:
 # ============= Page 2 =============
 
 if st.session_state.PageID == 2:
-    st.title("You are now at PageID 2")
+    st.title("You are now at Page 2")
     st.write("You have selected player number: ", st.session_state.UserID)
 
-    if st.button("Go to PageID 3"):
+    if st.button("Go to Page 3"):
         update_users_pageID(PageID=3, UserID=st.session_state.UserID, conn=CONN)
 
         st.rerun()
@@ -201,9 +212,9 @@ if st.session_state.PageID == 2:
 # ============= Page 3 =============
 
 if st.session_state.PageID == 3:
-    st.title("You are now at PageID 3")
+    st.title("You are now at Page 3")
     st.write("You have selected player number: ", st.session_state.UserID)
-    st.write("You have to wait at this page until all players are in page 3")
+    st.write("You have to wait at this page until all players are in page 3, once all players are in page 3, you will automatically proceed to the next page.")
 
     wait_until_all_users_reached_page(PageID_to_reach=3, total_num_of_user=4)
 
@@ -215,12 +226,15 @@ if st.session_state.PageID == 3:
 
 if st.session_state.PageID == 4:
 
-    st.title("You are now at PageID 4")
+    st.title("You are now at Page 4")
     st.write("You have selected player number: ", st.session_state.UserID)
 
     # post an example question
 
-    st.write("Question 1: Choose the following image that represent Will")
+    st.write("Question 1: Choose the following image that represent a cat")
+
+    st.session_state.selected = None
+
 
     col1, col2, col3 = st.columns(3)
 
@@ -246,31 +260,43 @@ if st.session_state.PageID == 4:
             # write a session state: selected
             st.session_state.selected = "owl"
 
-    # display the selected image
-    if "selected" in st.session_state:
-        st.write("You selected the image of a", st.session_state.selected)
 
-    if st.button("Submit & Next"):
+    st.write("You selected the image of a", st.session_state.selected)
+
+    if st.button("Submit & Next", disabled=st.session_state.selected is None, key="submit"):
         update_users_pageID(PageID=5, UserID=st.session_state.UserID, conn=CONN)
 
-        # create a mapping from st.session_state.selected to ProblemID
-        mapping = {"cat": 1, "dog": 2, "owl": 3}
-        ProblemID = mapping[st.session_state.selected]
-
-        increase_count_of_problemID(ProblemID=ProblemID, conn=CONN)
+        increase_count_of_problemID(ProblemID=st.session_state.selected, conn=CONN)
         st.rerun()
 
 # ============= Page 5 =============
 
 if st.session_state.PageID == 5:
-    st.title("You are now at PageID 5")
+    # this is a waiting page, you have to wait until all users reach page 5 or above to proceed
+    st.title("You are now at Page 5")
+    st.write("You have selected player number: ", st.session_state.UserID)
+    st.write("You have to wait at this page until all players are in page 5, once all players are in page 5, you will automatically proceed to the next page.")
+
+    wait_until_all_users_reached_page(PageID_to_reach=5, total_num_of_user=4)
+    update_users_pageID(PageID=6, UserID=st.session_state.UserID, conn=CONN)
+    st.rerun()
+
+
+# ============= Page 6 =============
+
+if st.session_state.PageID == 6:
+    st.title("You are now at PageID 6")
     st.write("You have selected player number: ", st.session_state.UserID)
 
     # post an example question
 
     st.write("Question 1: Choose the following image that represent Will")
+    st.write("You will be able to see what another user has selected previously.")
+
 
     col1, col2, col3 = st.columns(3)
+
+    st.session_state.selected = None
 
     with col1:
         st.header("A cat")
@@ -301,39 +327,37 @@ if st.session_state.PageID == 5:
             # write a session state: selected
             st.session_state.selected = "owl"
 
-    # display the selected image
-    if "selected" in st.session_state:
         st.write("You selected the image of a", st.session_state.selected)
 
     # for a page that has a button as well as waiting mechanism, we need to make sure the button press state is
-    # remembered even if the user refreshes the page
+    # remembered even if the user refreshes the pag
 
-    # get the user specific data
-    UserData = get_user_specific_data(UserID=st.session_state.UserID, conn=CONN)
-    # see if the 'pressed' key is in the UserData, if not, set it to False
-    if "pressed" not in UserData:
-        UserData["pressed"] = False
+    if st.button("Submit & Next", disabled=st.session_state.selected is None, key="submit"):
+        # update the ProblemID count
+        increase_count_of_problemID(ProblemID=st.session_state.selected + "_2", conn=CONN)
 
-    if st.button("Submit & Next", disabled=not UserData["pressed"]):
-        # If the key is already pressed, disable the button
-        # else, if the button is pressed, set the key to True
-
-        UserData["pressed"] = True
-        update_user_specific_data(UserID=st.session_state.UserID, UserData=UserData, conn=CONN)
-
-        wait_until_all_users_reached_page(PageID_to_reach=5, total_num_of_user=4)
-        update_users_pageID(PageID=6, UserID=st.session_state.UserID, conn=CONN)
+        update_users_pageID(PageID=7, UserID=st.session_state.UserID, conn=CONN)
         st.rerun()
 
-    if UserData["pressed"]:
-        st.write("You have already pressed the button")
-        wait_until_all_users_reached_page(PageID_to_reach=5, total_num_of_user=4)
-        update_users_pageID(PageID=6, UserID=st.session_state.UserID, conn=CONN)
-        st.rerun()
 
-# ============= Page 6 =============
-
-if st.session_state.PageID == 6:
-    st.title("You are now at PageID 6")
+# ============= Page 7 =============
+# this is a waiting page, you have to wait until all users reach page 7 or above to proceed
+if st.session_state.PageID == 7:
+    st.title("You are now at Page 7")
     st.write("You have selected player number: ", st.session_state.UserID)
-    st.write("You have completed the experiment. Thank you for your participation!")
+
+    wait_until_all_users_reached_page(PageID_to_reach=7, total_num_of_user=4)
+    update_users_pageID(PageID=8, UserID=st.session_state.UserID, conn=CONN)
+    st.rerun()
+
+# ============= Page 8 =============
+# reach the end of the demo
+if st.session_state.PageID == 8:
+    st.title("You have reached the end of the demo")
+    st.write("You have selected player number: ", st.session_state.UserID)
+    st.write("Thank you for participating in the demo!")
+    st.write("You can close the tab now.")
+    st.stop()
+
+
+# TODO: multiple user selecting the same ID
