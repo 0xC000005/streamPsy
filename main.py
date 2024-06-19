@@ -6,6 +6,10 @@ import json
 import pymongo
 from pymongo.database import Database
 
+# Initialize session state if it doesn't exist
+if "selected" not in st.session_state:
+    st.session_state.selected = ""
+
 st.set_page_config(
     page_title="StreamPsy Demo",
     page_icon="😎",
@@ -44,7 +48,7 @@ def get_UserIDToPageID(UserID: int, conn: Database[Mapping[str, Any] | Any] = CO
 
 
 def update_users_pageID(
-    PageID: int, UserID: int, conn: Database[Mapping[str, Any] | Any] = CONN
+        PageID: int, UserID: int, conn: Database[Mapping[str, Any] | Any] = CONN
 ):
     # update the PageID of the UserID
     collection = conn["UserIDToPageID"]
@@ -64,22 +68,20 @@ def update_users_pageID(
 
 
 def get_counts_from_ProblemID(
-    ProblemID: int, conn: Database[Mapping[str, Any] | Any] = CONN
+        ProblemID, conn: Database[Mapping[str, Any] | Any] = CONN
 ):
     collection = conn["Problem"]
     document = collection.find_one({"ProblemID": ProblemID})
     if document is None:
         return None
     else:
-        # return the `count` field
-        return document["ProblemID"]
+        # return the `count` field of the document
+        return document["count"]
 
 
 def increase_count_of_problemID(
-    ProblemID, conn: Database[Mapping[str, Any] | Any] = CONN
+        ProblemID, conn: Database[Mapping[str, Any] | Any] = CONN
 ):
-    st.write("ProblemID", ProblemID)
-    time.sleep(10)
     collection = conn["Problem"]
     document = collection.find_one({"ProblemID": ProblemID})
     if document is None:
@@ -103,7 +105,7 @@ def get_user_specific_data(UserID: int, conn: Database[Mapping[str, Any] | Any] 
 
 
 def update_user_specific_data(
-    UserID: int, UserData: dict, conn: Database[Mapping[str, Any] | Any] = CONN
+        UserID: int, UserData: dict, conn: Database[Mapping[str, Any] | Any] = CONN
 ):
     collection = conn["UserData"]
     # if the document does not exist, insert a new document, else update the document
@@ -114,7 +116,7 @@ def update_user_specific_data(
 
 def wait_until_all_users_reached_page(PageID_to_reach: int, total_num_of_user: int):
     with st.spinner(
-        "Wait for it other users to reach page " + str(PageID_to_reach) + "..."
+            "Wait for it other users to reach page " + str(PageID_to_reach) + "..."
     ):
         placeholder = st.empty()
 
@@ -123,8 +125,8 @@ def wait_until_all_users_reached_page(PageID_to_reach: int, total_num_of_user: i
             # check if userID 1, 2, 3, 4 are at least in page 3
             for i in range(1, total_num_of_user + 1):
                 if (
-                    get_UserIDToPageID(i, conn=CONN) is not None
-                    and get_UserIDToPageID(i, conn=CONN) >= PageID_to_reach
+                        get_UserIDToPageID(i, conn=CONN) is not None
+                        and get_UserIDToPageID(i, conn=CONN) >= PageID_to_reach
                 ):
                     num_of_user_have_reached_page_x += 1
             if num_of_user_have_reached_page_x >= 4:
@@ -214,7 +216,9 @@ if st.session_state.PageID == 2:
 if st.session_state.PageID == 3:
     st.title("You are now at Page 3")
     st.write("You have selected player number: ", st.session_state.UserID)
-    st.write("You have to wait at this page until all players are in page 3, once all players are in page 3, you will automatically proceed to the next page.")
+    st.write(
+        "You have to wait at this page until all players are in page 3, once all players are in page 3, you will automatically proceed to the next page."
+    )
 
     wait_until_all_users_reached_page(PageID_to_reach=3, total_num_of_user=4)
 
@@ -233,10 +237,8 @@ if st.session_state.PageID == 4:
 
     st.write("Question 1: Choose the following image that represent a cat")
 
-    st.session_state.selected = None
-
-
     col1, col2, col3 = st.columns(3)
+    pressed = False
 
     with col1:
         st.header("A cat")
@@ -244,6 +246,7 @@ if st.session_state.PageID == 4:
         if st.button("Select", key="cat"):
             # write a session state: selected
             st.session_state.selected = "cat"
+            pressed = True
 
     with col2:
         st.header("A dog")
@@ -251,6 +254,7 @@ if st.session_state.PageID == 4:
         if st.button("Select", key="dog"):
             # write a session state: selected
             st.session_state.selected = "dog"
+            pressed = True
 
     with col3:
         st.header("An owl")
@@ -259,11 +263,11 @@ if st.session_state.PageID == 4:
         if st.button("Select", key="owl"):
             # write a session state: selected
             st.session_state.selected = "owl"
-
+            pressed = True
 
     st.write("You selected the image of a", st.session_state.selected)
 
-    if st.button("Submit & Next", disabled=st.session_state.selected is None, key="submit"):
+    if st.button("Submit & Next", disabled=pressed is None, key="submit"):
         update_users_pageID(PageID=5, UserID=st.session_state.UserID, conn=CONN)
 
         increase_count_of_problemID(ProblemID=st.session_state.selected, conn=CONN)
@@ -275,70 +279,73 @@ if st.session_state.PageID == 5:
     # this is a waiting page, you have to wait until all users reach page 5 or above to proceed
     st.title("You are now at Page 5")
     st.write("You have selected player number: ", st.session_state.UserID)
-    st.write("You have to wait at this page until all players are in page 5, once all players are in page 5, you will automatically proceed to the next page.")
+    st.write(
+        "You have to wait at this page until all players are in page 5, once all players are in page 5, you will automatically proceed to the next page."
+    )
 
     wait_until_all_users_reached_page(PageID_to_reach=5, total_num_of_user=4)
     update_users_pageID(PageID=6, UserID=st.session_state.UserID, conn=CONN)
     st.rerun()
 
-
 # ============= Page 6 =============
 
 if st.session_state.PageID == 6:
-    st.title("You are now at PageID 6")
+    st.title("You are now at Page 6")
     st.write("You have selected player number: ", st.session_state.UserID)
 
     # post an example question
 
-    st.write("Question 1: Choose the following image that represent Will")
+    st.write("Question 1: Choose the following image that represent a cat")
     st.write("You will be able to see what another user has selected previously.")
 
-
     col1, col2, col3 = st.columns(3)
-
-    st.session_state.selected = None
+    pressed = False
 
     with col1:
         st.header("A cat")
         st.image("https://static.streamlit.io/examples/cat.jpg")
         # show the count of the ProblemID
-        count = get_counts_from_ProblemID(ProblemID=1, conn=CONN)
+        count = get_counts_from_ProblemID(ProblemID="cat", conn=CONN)
         st.write(f"Count: {count}")
         if st.button("Select", key="cat"):
             # write a session state: selected
             st.session_state.selected = "cat"
+            pressed = True
 
     with col2:
         st.header("A dog")
         st.image("https://static.streamlit.io/examples/dog.jpg")
         # show the count of the ProblemID
-        count = get_counts_from_ProblemID(ProblemID=2, conn=CONN)
+        count = get_counts_from_ProblemID(ProblemID="dog", conn=CONN)
         st.write(f"Count: {count}")
         if st.button("Select", key="dog"):
             # write a session state: selected
             st.session_state.selected = "dog"
+            pressed = True
 
     with col3:
         st.header("An owl")
         st.image("https://static.streamlit.io/examples/owl.jpg")
-        count = get_counts_from_ProblemID(ProblemID=3, conn=CONN)
+        count = get_counts_from_ProblemID(ProblemID="owl", conn=CONN)
         st.write(f"Count: {count}")
         if st.button("Select", key="owl"):
             # write a session state: selected
             st.session_state.selected = "owl"
+            pressed = True
 
-        st.write("You selected the image of a", st.session_state.selected)
+    st.write("You selected the image of a", st.session_state.selected)
 
     # for a page that has a button as well as waiting mechanism, we need to make sure the button press state is
     # remembered even if the user refreshes the pag
 
-    if st.button("Submit & Next", disabled=st.session_state.selected is None, key="submit"):
+    if st.button("Submit & Next", disabled=not pressed, key="submit"):
         # update the ProblemID count
-        increase_count_of_problemID(ProblemID=st.session_state.selected + "_2", conn=CONN)
+        increase_count_of_problemID(
+            ProblemID=st.session_state.selected + "_2", conn=CONN
+        )
 
         update_users_pageID(PageID=7, UserID=st.session_state.UserID, conn=CONN)
         st.rerun()
-
 
 # ============= Page 7 =============
 # this is a waiting page, you have to wait until all users reach page 7 or above to proceed
